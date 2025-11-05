@@ -4,9 +4,9 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import re
 
 # -----------------------------
-# Load model & tokenizer
+# MODEL SETUP
 # -----------------------------
-MODEL_NAME = "laisalkk/indoBERT-caption"  # ganti sesuai model Hugging Face kamu
+MODEL_NAME = "cahya/indoBERT2BERT-base"  # model dasar generatif
 
 @st.cache_resource
 def load_model():
@@ -19,10 +19,12 @@ def load_model():
 tokenizer, model, device = load_model()
 
 # -----------------------------
-# Cleaning & postprocess
+# CLEANING & POSTPROCESS
 # -----------------------------
 def clean_text(text):
-    text = re.sub(r'\s+', ' ', str(text))
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'[^\w\s.,;:!?()/-]', '', text)
     return text.strip()
 
@@ -56,16 +58,19 @@ def postprocess_caption(text):
     return text.strip()
 
 # -----------------------------
-# Caption generator
+# GENERATE FUNCTION
 # -----------------------------
 def generate_caption(label, title, isi, num_captions=2):
     isi_clean = clean_text(isi)
     title_clean = clean_text(title)
+    if not isi_clean:
+        return ["(Isi berita kosong — tidak bisa membuat caption)"]
+
     prompt = f"Label: {label}. Judul: {title_clean}. Isi: {isi_clean}."
 
     captions = []
     for _ in range(num_captions):
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
+        inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(device)
         summary_ids = model.generate(
             **inputs,
             max_length=380,
@@ -80,19 +85,19 @@ def generate_caption(label, title, isi, num_captions=2):
     return captions
 
 # -----------------------------
-# Streamlit UI
+# STREAMLIT UI
 # -----------------------------
-st.title("🧠 Auto Caption Generator – IndoBERT2BERT")
-st.write("Masukkan judul berita, isi, dan label (Fakta/Hoaks), lalu model akan menghasilkan caption otomatis.")
+st.title("🧠 IndoBERT2BERT – Caption Generator")
+st.write("Masukkan **judul berita**, **isi berita**, dan **label** (Fakta/Hoaks), lalu model akan membuat caption otomatis.")
 
 judul = st.text_input("📰 Judul Berita")
 isi = st.text_area("📄 Isi Berita")
 label = st.selectbox("🏷️ Label", ["Fakta", "Hoaks"])
-num_captions = st.slider("🔢 Jumlah caption yang dihasilkan", 1, 3, 2)
+num_captions = st.slider("🔢 Jumlah Caption", 1, 3, 2)
 
 if st.button("🚀 Generate Caption"):
-    with st.spinner("Sedang menghasilkan caption..."):
+    with st.spinner("Model sedang membuat caption..."):
         captions = generate_caption(label, judul, isi, num_captions)
-    st.success("✅ Caption berhasil dihasilkan!")
+    st.success("✅ Caption berhasil dibuat!")
     for i, cap in enumerate(captions, 1):
         st.markdown(f"**🟢 Caption {i}:** {cap}")
