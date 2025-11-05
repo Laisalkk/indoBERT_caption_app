@@ -1,7 +1,7 @@
 {
-  "model_name": "laisalkk/indoBERT-caption",
+  "model_name": "cahya/indoBERT2BERT-base",
   "framework": "pytorch",
   "app_type": "caption_generator",
   "num_default_captions": 2,
-  "description": "A Streamlit app to generate captions using IndoBERT2BERT fine-tuned model."
+  "description": "A Streamlit app that generates news captions using Cahya IndoBERT2BERT-base."
 }
