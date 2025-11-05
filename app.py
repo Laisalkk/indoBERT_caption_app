@@ -1,56 +1,98 @@
 import streamlit as st
-from transformers import pipeline
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import re
 
-MODEL_NAME = "laisalkk/indoBERT-caption"
+# -----------------------------
+# Load model & tokenizer
+# -----------------------------
+MODEL_NAME = "laisalkk/indoBERT-caption"  # ganti sesuai model Hugging Face kamu
 
 @st.cache_resource
 def load_model():
-    generator = pipeline(
-        "text-generation",
-        model=MODEL_NAME,
-        tokenizer=MODEL_NAME
-    )
-    return generator
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    return tokenizer, model, device
 
-def generate_captions(generator, judul, isi, label, num_captions=2):
-    prompt = f"Judul: {judul}\nIsi: {isi}\nLabel: {label}\nCaption:"
-    results = generator(
-        prompt,
-        max_new_tokens=60,          # ✅ perbaikan: ganti dari max_length
-        num_return_sequences=num_captions,
-        do_sample=True,
-        top_k=50,
-        top_p=0.95,
-        temperature=0.8
-    )
-    captions = [r["generated_text"].split("Caption:")[-1].strip() for r in results]
+tokenizer, model, device = load_model()
+
+# -----------------------------
+# Cleaning & postprocess
+# -----------------------------
+def clean_text(text):
+    text = re.sub(r'\s+', ' ', str(text))
+    text = re.sub(r'[^\w\s.,;:!?()/-]', '', text)
+    return text.strip()
+
+def normalize_capitalization(text):
+    if not text:
+        return ""
+    text = text.strip()
+    if text:
+        text = text[0].upper() + text[1:]
+    replacements = {
+        "bpjs": "BPJS", "bri": "BRI", "bni": "BNI", "ojk": "OJK",
+        "ri": "RI", "who": "WHO", "pt ": "PT ", "pmi": "PMI",
+        "puskesmas": "Puskesmas", "indomaret": "Indomaret",
+        "telkomsel": "Telkomsel", "facebook": "Facebook",
+        "twitter": "Twitter", "whatsapp": "WhatsApp",
+        "jokowi": "Jokowi", "risma": "Risma"
+    }
+    for k, v in replacements.items():
+        text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
+    return text
+
+def postprocess_caption(text):
+    text = re.sub(r'\s*\.\s*\.', '.', text)
+    text = re.sub(r'\s*-\s*', ' - ', text)
+    text = re.sub(r'\s+', ' ', text)
+    def cap_after_period(s):
+        return re.sub(r'(?<=[.!?]\s)([a-z])', lambda m: m.group(1).upper(), s)
+    text = cap_after_period(text)
+    if not text.endswith('.'):
+        text += '.'
+    return text.strip()
+
+# -----------------------------
+# Caption generator
+# -----------------------------
+def generate_caption(label, title, isi, num_captions=2):
+    isi_clean = clean_text(isi)
+    title_clean = clean_text(title)
+    prompt = f"Label: {label}. Judul: {title_clean}. Isi: {isi_clean}."
+
+    captions = []
+    for _ in range(num_captions):
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
+        summary_ids = model.generate(
+            **inputs,
+            max_length=380,
+            num_beams=5,
+            length_penalty=1.5,
+            early_stopping=True,
+            no_repeat_ngram_size=2
+        )
+        caption = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        caption = normalize_capitalization(postprocess_caption(caption))
+        captions.append(caption)
     return captions
 
-def main():
-    st.set_page_config(page_title="IndoBERT Caption Generator", layout="centered")
-    st.title("🇮🇩 IndoBERT Caption Generator")
-    st.write("Masukkan berita dan label Fakta/Hoaks untuk menghasilkan caption otomatis dengan model **CahyaBERT Summary**.")
+# -----------------------------
+# Streamlit UI
+# -----------------------------
+st.title("🧠 Auto Caption Generator – IndoBERT2BERT")
+st.write("Masukkan judul berita, isi, dan label (Fakta/Hoaks), lalu model akan menghasilkan caption otomatis.")
 
-    judul = st.text_input("📰 Judul Berita")
-    isi = st.text_area("📄 Isi Berita", height=200)
-    label = st.radio("🏷️ Label Berita", ["Fakta", "Hoaks"])
-    num_captions = st.slider("🔢 Jumlah caption yang ingin dihasilkan:", 1, 5, 2)
+judul = st.text_input("📰 Judul Berita")
+isi = st.text_area("📄 Isi Berita")
+label = st.selectbox("🏷️ Label", ["Fakta", "Hoaks"])
+num_captions = st.slider("🔢 Jumlah caption yang dihasilkan", 1, 3, 2)
 
-    if st.button("🔍 Hasilkan Caption"):
-        if judul.strip() and isi.strip():
-            generator = load_model()
-            try:
-                captions = generate_captions(generator, judul, isi, label, num_captions)
-                st.success(f"**{num_captions} Caption yang dihasilkan:**")
-                for i, cap in enumerate(captions, 1):
-                    st.markdown(f"**🟢 Caption {i}:** {cap}")
-            except Exception as e:
-                st.error(f"Terjadi error saat generate caption: {str(e)}")
-        else:
-            st.warning("Mohon isi judul dan isi berita terlebih dahulu.")
-
-    st.markdown("---")
-    st.caption("Model: laisalkk/indoBERT-caption • Base: CahyaBERT Summary • Dibuat oleh laisalkk")
-
-if __name__ == "__main__":
-    main()
+if st.button("🚀 Generate Caption"):
+    with st.spinner("Sedang menghasilkan caption..."):
+        captions = generate_caption(label, judul, isi, num_captions)
+    st.success("✅ Caption berhasil dihasilkan!")
+    for i, cap in enumerate(captions, 1):
+        st.markdown(f"**🟢 Caption {i}:** {cap}")
