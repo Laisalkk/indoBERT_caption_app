@@ -16,7 +16,7 @@ def generate_captions(generator, judul, isi, label, num_captions=2):
     prompt = f"Judul: {judul}\nIsi: {isi}\nLabel: {label}\nCaption:"
     results = generator(
         prompt,
-        max_length=60,
+        max_new_tokens=60,          # ✅ perbaikan: ganti dari max_length
         num_return_sequences=num_captions,
         do_sample=True,
         top_k=50,
@@ -34,16 +34,18 @@ def main():
     judul = st.text_input("📰 Judul Berita")
     isi = st.text_area("📄 Isi Berita", height=200)
     label = st.radio("🏷️ Label Berita", ["Fakta", "Hoaks"])
-
     num_captions = st.slider("🔢 Jumlah caption yang ingin dihasilkan:", 1, 5, 2)
 
     if st.button("🔍 Hasilkan Caption"):
         if judul.strip() and isi.strip():
             generator = load_model()
-            captions = generate_captions(generator, judul, isi, label, num_captions)
-            st.success(f"**{num_captions} Caption yang dihasilkan:**")
-            for i, cap in enumerate(captions, 1):
-                st.markdown(f"**🟢 Caption {i}:** {cap}")
+            try:
+                captions = generate_captions(generator, judul, isi, label, num_captions)
+                st.success(f"**{num_captions} Caption yang dihasilkan:**")
+                for i, cap in enumerate(captions, 1):
+                    st.markdown(f"**🟢 Caption {i}:** {cap}")
+            except Exception as e:
+                st.error(f"Terjadi error saat generate caption: {str(e)}")
         else:
             st.warning("Mohon isi judul dan isi berita terlebih dahulu.")
 
