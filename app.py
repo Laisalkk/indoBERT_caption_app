@@ -2,7 +2,7 @@ import streamlit as st
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-MODEL_NAME = "laisalkk/indoBERT-caption"  # model caption kamu di Hugging Face
+MODEL_NAME = "laisalkk/indoBERT-caption"
 
 @st.cache_resource
 def load_model():
@@ -14,24 +14,36 @@ def load_model():
 
 tokenizer, model, device = load_model()
 
-st.set_page_config(page_title="IndoBERT Caption Generator", page_icon="📝")
-st.title("📝 IndoBERT Caption Generator")
-st.write("Masukkan teks atau deskripsi untuk menghasilkan **caption otomatis berbahasa Indonesia.**")
+# Tampilan halaman
+st.set_page_config(page_title="IndoBERT Caption Generator", page_icon="📰")
+st.title("📰 IndoBERT Caption Generator")
+st.markdown(
+    "Masukkan **judul berita**, **label (Hoaks atau Fakta)**, dan **isi berita** "
+    "untuk menghasilkan *caption otomatis berbahasa Indonesia*."
+)
 
-text_input = st.text_area("Masukkan kalimat deskripsi:", "", height=150)
+# Input dari user
+judul = st.text_input("🗞️ Judul Berita:")
+label = st.selectbox("🏷️ Label Berita:", ["Hoaks", "Fakta"])
+isi = st.text_area("🧾 Isi Berita:", height=200)
 
-if st.button("Generate Caption"):
-    if not text_input.strip():
-        st.warning("Masukkan teks terlebih dahulu.")
+if st.button("🔍 Generate Caption"):
+    if not judul.strip() or not isi.strip():
+        st.warning("Masukkan judul dan isi berita terlebih dahulu.")
     else:
-        with st.spinner("Menghasilkan caption..."):
-            inputs = tokenizer(text_input, return_tensors="pt", truncation=True).to(device)
+        with st.spinner("Sedang menghasilkan caption..."):
+            # Gabungkan input menjadi format model
+            prompt = f"Judul: {judul}\nLabel: {label}\nIsi: {isi}\nCaption:"
+            
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True).to(device)
             outputs = model.generate(
                 **inputs,
-                max_length=30,
+                max_length=50,
                 num_beams=5,
                 repetition_penalty=2.5,
                 early_stopping=True
             )
             caption = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            st.success("**Caption:** " + caption)
+            
+            st.subheader("📝 Caption yang Dihasilkan:")
+            st.success(caption)
