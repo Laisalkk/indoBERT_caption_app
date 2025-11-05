@@ -1,8 +1,8 @@
 {
   "title": "IndoBERT Caption Generator",
-  "emoji": "📝",
-  "colorFrom": "blue",
-  "colorTo": "pink",
+  "emoji": "📰",
+  "colorFrom": "gray",
+  "colorTo": "blue",
   "sdk": "streamlit",
   "app_file": "app.py",
   "pinned": false
