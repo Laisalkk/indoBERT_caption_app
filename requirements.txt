@@ -1,0 +1,7 @@
+streamlit
+torch
+sentencepiece
+protobuf==3.20.*
+transformers==4.45.0
+tokenizers==0.20.3
+huggingface-hub==0.36.0
