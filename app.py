@@ -1,42 +1,51 @@
 import streamlit as st
 import torch
-from transformers import AutoTokenizer, EncoderDecoderModel
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-MODEL_NAME = "cahya/indoBERT2BERT-base"
+MODEL_NAME = "laisalkk/indoBERT-caption"
 
 @st.cache_resource
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = EncoderDecoderModel.from_pretrained(MODEL_NAME)
+    model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     return tokenizer, model, device
 
 tokenizer, model, device = load_model()
 
-# Fungsi untuk membuat ringkasan
-def generate_summary(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True).to(device)
+def generate_caption(judul, isi, label):
+    prompt = f"Judul: {judul}\nIsi: {isi}\nLabel: {label}\nCaption:"
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, padding=True).to(device)
     with torch.no_grad():
-        summary_ids = model.generate(**inputs, max_length=100, num_beams=4, early_stopping=True)
-    return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        output = model.generate(
+            **inputs,
+            max_length=64,
+            num_beams=4,
+            early_stopping=True,
+            no_repeat_ngram_size=2,
+            temperature=0.8
+        )
+    caption = tokenizer.decode(output[0], skip_special_tokens=True)
+    return caption
 
-# Tampilan Streamlit
-st.set_page_config(page_title="IndoBERT Caption Generator", page_icon="📝", layout="centered")
+st.set_page_config(page_title="IndoBERT Caption Generator", page_icon="📰", layout="centered")
 
-st.title("📝 IndoBERT Caption Generator")
-st.markdown("Model ringkasan teks berbasis IndoBERT2BERT oleh Cahya 🤗")
+st.title("📰 IndoBERT Caption Generator")
+st.markdown("Model pembuat caption berdasarkan judul, isi berita, dan label (Fakta/Hoaks).")
 
-text_input = st.text_area("Masukkan teks untuk diringkas:", "")
+judul = st.text_input("🧾 Judul Berita:")
+isi = st.text_area("📄 Isi Berita:")
+label = st.selectbox("🏷️ Label:", ["Fakta", "Hoaks"])
 
-if st.button("✨ Buat Ringkasan"):
-    if text_input.strip():
-        with st.spinner("Sedang menghasilkan ringkasan..."):
-            summary = generate_summary(text_input)
-        st.success("**Hasil Ringkasan:**")
-        st.write(summary)
+if st.button("🚀 Hasilkan Caption"):
+    if judul.strip() and isi.strip():
+        with st.spinner("Model sedang membuat caption..."):
+            caption = generate_caption(judul, isi, label)
+        st.success("**Caption yang dihasilkan:**")
+        st.write(caption)
     else:
-        st.warning("Masukkan teks terlebih dahulu!")
+        st.warning("Masukkan judul dan isi berita terlebih dahulu!")
 
 st.markdown("---")
-st.caption("Ditenagai oleh IndoBERT2BERT (Cahya) - Hugging Face 🤗")
+st.caption("Ditenagai oleh IndoBERT Caption - Model oleh @laisalkk 🤗")
