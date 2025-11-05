@@ -1,11 +1,7 @@
 {
   "model_name": "laisalkk/indoBERT-caption",
-  "app_title": "IndoBERT Caption Generator",
-  "description": "Aplikasi Streamlit untuk menghasilkan beberapa caption otomatis berdasarkan judul, isi, dan label berita (Fakta/Hoaks) menggunakan model IndoBERT berbasis CahyaBERT Summary.",
-  "author": "laisalkk",
-  "version": "1.0",
-  "default_num_captions": 2,
-  "temperature": 0.8,
-  "top_k": 50,
-  "top_p": 0.95
+  "framework": "pytorch",
+  "app_type": "caption_generator",
+  "num_default_captions": 2,
+  "description": "A Streamlit app to generate captions using IndoBERT2BERT fine-tuned model."
 }
