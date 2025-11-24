@@ -21,7 +21,7 @@ tokenizer, model, device = load_model()
 st.title("📰 IndoBERT Caption Generator")
 st.markdown(
     "Masukkan **judul berita**, **label (Hoaks atau Fakta)**, dan **isi berita** "
-    "untuk menghasilkan *caption otomatis berbahasa Indonesia*."
+    "untuk menghasilkan *caption singkat berbahasa Indonesia*."
 )
 
 # Input dari pengguna
@@ -48,3 +48,4 @@ if st.button("🔍 Generate Caption"):
             
             st.subheader("📝 Caption yang Dihasilkan:")
             st.success(caption)
+
